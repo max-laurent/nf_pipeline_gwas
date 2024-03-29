@@ -1,7 +1,7 @@
 
 # OS generated files 
 .DS_Store
-.nextflow.*
+.nextflow*
 .RHistory
 # Dataset
 /data

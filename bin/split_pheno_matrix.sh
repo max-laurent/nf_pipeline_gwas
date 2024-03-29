@@ -1,7 +1,7 @@
 #!/bin/bash
 
 filename="$1"
-n_col=5 #$(awk 'END {print NF;}' $filename)
+n_col=4 #$(awk 'END {print NF;}' $filename)
 col_names=$(head -n1 $filename)
 
 for (( i=3; i<=$n_col; i++ )); do

@@ -1,9 +1,9 @@
-params.bfile = "./data/geno/mynewdata*"
-params.pheno_matrix = "./data/pheno/aqp_expression_matrix.txt"
-params.kin = "./data/kin/FASTLMM_kinship_sansChr11.txt"
-params.bim = "./data/geno/Matrix_50K_600K_GBS_BGA_SVAmaizing_Dente_NoPrivate_Chr.bim.all"
-params.info = "./data/geno/Matrix_ImputedBeagle012_50K_600K_GBS_BGA_SV_Amaizing_Dente_Chr_All_OneMatrix_NotFiltered_NoPrivate.rds"
-params.position = "./data/geno/2023-11-17_AmaizingV3_Info_SNPs_InDels_WithConfInt_R2_r2k_SeuilR2_0.1_Model_HillWeir_cor_interval_RefGen_v4.txt" 
+params.bfile = "./data/geno_data*"
+params.pheno_matrix = "./data/expression_matrix.txt"
+params.kin = "./data/FASTLMM_kinship_sansChr11.txt"
+params.bim = "./data/Matrix_50K_600K_GBS_BGA_SVAmaizing_Dente_NoPrivate_Chr.bim.all"
+params.info = "./data/Matrix_ImputedBeagle012_50K_600K_GBS_BGA_SV_Amaizing_Dente_Chr_All_OneMatrix_NotFiltered_NoPrivate.rds"
+params.position = "./data/2023-11-17_AmaizingV3_Info_SNPs_InDels_WithConfInt_R2_r2k_SeuilR2_0.1_Model_HillWeir_cor_interval_RefGen_v4.txt" 
 params.outdir = "./data/results" 
 
 process SPLIT_PHENO {
@@ -14,9 +14,9 @@ process SPLIT_PHENO {
     output:
     path 'Pheno*'
 
-    script:
+    script: // Improvement could be done by using the method .baseName on the output 
     """
-    bash /mnt/data-bioinfo/Users/maxlaurent/GWAS/script/split_pheno_matrix.sh $matrix
+    split_pheno_matrix.sh $matrix 
     """
 }
 
@@ -32,7 +32,7 @@ process FORMAT_PHENO {
 
     script:
     """
-    Rscript /mnt/data-bioinfo/Users/maxlaurent/GWAS/script/matrix_formating.R $pheno_file ${geno_file[2]}
+    matrix_formating.R $pheno_file ${geno_file[2]}
     
     """
     
@@ -42,6 +42,7 @@ process FASTLMM {
     //container "image_fastlmm_plink:latest"
     maxForks 5
     publishDir params.outdir, mode: 'copy'
+    memory = '8GB'
 
     input:
     tuple val(meta), path(pheno)
@@ -53,7 +54,7 @@ process FASTLMM {
 
     script:
         """
-        /home/maxlaurent/.local/lib/python3.10/site-packages/fastlmm/association/Fastlmm_autoselect/fastlmmc -REML -verboseOut -bfile $sample_id -pheno $pheno -sim $kin -simLearnType Full -out FASTLMM_${meta}.txt -maxThreads 8 -mpheno 1
+        fastlmmc -REML -verboseOut -bfile $sample_id -pheno $pheno -sim $kin -simLearnType Full -out FASTLMM_${meta}.txt -maxThreads 8 -mpheno 1
         """
 }
 
@@ -108,7 +109,7 @@ process ADD_INFO_GWAS {
 
     script:
     """
-    Rscript /mnt/data-bioinfo/Users/maxlaurent/GWAS/script/formating_fastlmm_output.R $meta ${pheno[0]} ${pheno[1]} $bim $info $position 
+    formating_fastlmm_output.R $meta ${pheno[0]} ${pheno[1]} $bim $info $position 
     """
 }
 
@@ -123,7 +124,7 @@ process FILTER_SIGNIF_MARKERS {
 
     script:
     """
-    Rscript /mnt/data-bioinfo/Users/maxlaurent/GWAS/script/extract_signif_marker.R $meta ${pheno[0]} 
+    extract_signif_marker.R $meta ${pheno[0]} 
     """
 }
 
