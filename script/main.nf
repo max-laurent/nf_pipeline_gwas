@@ -1,3 +1,11 @@
+params.bfile = "./data/geno/mynewdata*"
+params.pheno_matrix = "./data/pheno/aqp_expression_matrix.txt"
+params.kin = "./data/kin/FASTLMM_kinship_sansChr11.txt"
+params.bim = "./data/geno/Matrix_50K_600K_GBS_BGA_SVAmaizing_Dente_NoPrivate_Chr.bim.all"
+params.info = "./data/geno/Matrix_ImputedBeagle012_50K_600K_GBS_BGA_SV_Amaizing_Dente_Chr_All_OneMatrix_NotFiltered_NoPrivate.rds"
+params.position = "./data/geno/2023-11-17_AmaizingV3_Info_SNPs_InDels_WithConfInt_R2_r2k_SeuilR2_0.1_Model_HillWeir_cor_interval_RefGen_v4.txt" 
+params.outdir = "./data/results" 
+
 process SPLIT_PHENO {
 
     input:
@@ -6,25 +14,16 @@ process SPLIT_PHENO {
     output:
     path 'Pheno*'
 
-    shell:
-    '''
-    #!/bin/bash
-
-    filename="!{matrix}"
-    n_col=$(awk 'END {print NF;}' $filename)
-    col_names=$(head -n1 $filename)
-
-    for (( i=2; i<=$n_col; i++ )); do
-        out_name=$(echo $col_names | awk -v col="$i" '{print $col;}')
-        awk -v col="$i" '{print $1, $col}' $filename > Pheno_$out_name.txt
-    done
-    '''
+    script:
+    """
+    bash /mnt/data-bioinfo/Users/maxlaurent/GWAS/script/split_pheno_matrix.sh $matrix
+    """
 }
 
 process FORMAT_PHENO {
-    debug true
+    
     input:
-    path geno_file
+    tuple val(sample_id), path(geno_file)
     path pheno_file
     
 
@@ -32,37 +31,143 @@ process FORMAT_PHENO {
     path 'FORMATED_*'
 
     script:
-    // """
-    // ls $pheno_file
-    // """
     """
-    #!/usr/bin/env R --vanilla
-    library("tidyverse")
-    pheno_file <- read.table(file = "$pheno_file", header = TRUE, sep = " ")
+    Rscript /mnt/data-bioinfo/Users/maxlaurent/GWAS/script/matrix_formating.R $pheno_file ${geno_file[2]}
+    
+    """
+    
+}
 
-    pheno_file <- pheno_file %>% rename(FID = genotype)
+process FASTLMM {
+    //container "image_fastlmm_plink:latest"
+    maxForks 5
+    publishDir params.outdir, mode: 'copy'
 
-    geno_file <- read.table("$geno_file", stringsAsFactors = FALSE, header = FALSE)
+    input:
+    tuple val(meta), path(pheno)
+    tuple val(sample_id), path(geno_file)
+    path kin 
 
-    frame <- geno_file[, c(1:2)]
-    frame <- left_join(frame, pheno_file, by = join_by("V2" == "FID"))
-    frame[is.na(frame)] <- -9
+    output:
+    tuple val(meta), path("FASTLMM_${meta}.txt")
 
-    colnames(frame)[1] <- "FID"
-    colnames(frame)[2] <- "IID"
+    script:
+        """
+        /home/maxlaurent/.local/lib/python3.10/site-packages/fastlmm/association/Fastlmm_autoselect/fastlmmc -REML -verboseOut -bfile $sample_id -pheno $pheno -sim $kin -simLearnType Full -out FASTLMM_${meta}.txt -maxThreads 8 -mpheno 1
+        """
+}
 
-    write.table(frame, file = paste0("FORMATED_", "$pheno_file"), sep = "\t", col.names = TRUE, row.names = FALSE, quote = FALSE)
+process TO_REMOVE_FOR_MAF {
+    input:
+    tuple val(meta), path(pheno)
+
+    output:
+    tuple val(meta), path("MISSING_DATA.txt")
+
+    shell:
+    '''
+    #!/bin/bash
+    
+    awk '$3 == -9' !{pheno} > MISSING_DATA.txt
+    '''
+
+}
+
+process CALCULATE_MAF {
+    input:
+    tuple val(meta), path("MISSING_DATA.txt")
+    tuple val(sample_id), path(geno_file)
+    
+
+    output:
+    tuple val(meta), path("*.frq")
+
+    script:
+    """
+    plink \
+        --noweb \
+	    --bfile $sample_id \
+	    --remove MISSING_DATA.txt \
+	    --freq \
+	    --out freq_$meta
     """
 
 }
+
+process ADD_INFO_GWAS {
+    
+    publishDir params.outdir, mode: 'copy'
+    input:
+    tuple val(meta), path(pheno)
+    path bim
+    path info
+    path position
+
+    output:
+    tuple val(meta), path("Formated_${meta}.txt")
+
+    script:
+    """
+    Rscript /mnt/data-bioinfo/Users/maxlaurent/GWAS/script/formating_fastlmm_output.R $meta ${pheno[0]} ${pheno[1]} $bim $info $position 
+    """
+}
+
+process FILTER_SIGNIF_MARKERS {
+    
+    publishDir params.outdir, mode: 'copy'
+    input:
+    tuple val(meta), path(pheno)
+
+    output:
+    path "Signif_markers_${meta}.txt"
+
+    script:
+    """
+    Rscript /mnt/data-bioinfo/Users/maxlaurent/GWAS/script/extract_signif_marker.R $meta ${pheno[0]} 
+    """
+}
+
 workflow {
     Channel
-        .fromPath('./data/expression_matrix.txt')
+        .fromPath(params.pheno_matrix)
         .set{expr_matrix_ch}
+     Channel
+    	.fromPath(params.bfile)
+        .toSortedList()
+        .flatten()
+    	.map { it -> [it.name.split('\\.').first(), it] }
+    	.groupTuple()
+        .collect()
+    	.set{geno_files_ch}
     Channel
-        .fromPath('./data/geno_data.fam')
-        .set{fam_data}
+        .fromPath(params.kin)
+        .collect()
+        .set{kin_ch} 
+
     
-    split_pheno_ch = SPLIT_PHENO(expr_matrix_ch)
-    formated_pheno_ch = FORMAT_PHENO(fam_data.collect(), split_pheno_ch.flatten()) 
+    
+    formated_pheno_ch = FORMAT_PHENO(geno_files_ch, expr_matrix_ch) 
+    split_pheno_ch = SPLIT_PHENO(formated_pheno_ch)
+
+    split_pheno_ch
+        .flatten()
+        .map{it -> [it.name.split('\\/').last(), it]}
+        .groupTuple()
+        .set{split_pheno_ch}
+        
+    gwas_results_ch = FASTLMM(split_pheno_ch, geno_files_ch, kin_ch)
+    removal_ch = TO_REMOVE_FOR_MAF(split_pheno_ch)
+    maf_ch = CALCULATE_MAF(removal_ch, geno_files_ch) 
+
+    gwas_results_ch
+        .concat(maf_ch)
+        .groupTuple()
+        .set{gwas_results_ch}
+
+    bim = Channel.fromPath(params.bim).collect()
+    info = Channel.fromPath(params.info).collect()
+    position = Channel.fromPath(params.position).collect()
+
+    formated_data = ADD_INFO_GWAS(gwas_results_ch, bim, info, position)
+    signif_data = FILTER_SIGNIF_MARKERS(formated_data)
 }

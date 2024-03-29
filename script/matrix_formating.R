@@ -1,5 +1,5 @@
-
-suppressPackageStartupMessages(library("tidyverse"))
+#!/usr/bin/env Rscript
+library("tidyverse")
 
 args <- commandArgs(trailingOnly = TRUE)
 
@@ -16,4 +16,4 @@ frame[is.na(frame)] <- -9
 colnames(frame)[1] <- "FID"
 colnames(frame)[2] <- "IID"
 
-write.table(frame, file = args[1], sep = "\t", col.names = TRUE, row.names = FALSE, quote = FALSE)
+write.table(frame, file = paste0("FORMATED_", args[1]), sep = "\t", col.names = TRUE, row.names = FALSE, quote = FALSE)
