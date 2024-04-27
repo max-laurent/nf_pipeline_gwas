@@ -20,8 +20,8 @@ RUN wget -c http://s3.amazonaws.com/plink1-assets/plink_linux_x86_64_20231211.zi
     rm plink_linux_x86_64_20231211.zip && \
     chmod +x /usr/local/bin/plink
 
-# Installez FastLMM via pip
+# Install FastLMM via pip
 RUN pip3 install fastlmm
 
-# Ajoutez le répertoire d'installation de FastLMM au PATH
+# Add FastLMM directory to the PATH
 ENV PATH="/usr/local/lib/python3.10/dist-packages/fastlmm/association/Fastlmm_autoselect/:${PATH}"

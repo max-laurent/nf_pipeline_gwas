@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# Phenotypic data needs to be split by phenotype. This results in one file per phenotype.
 filename="$1"
 n_col=4 #$(awk 'END {print NF;}' $filename)
 col_names=$(head -n1 $filename)

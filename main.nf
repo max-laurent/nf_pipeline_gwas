@@ -33,7 +33,6 @@ process FORMAT_PHENO {
     script:
     """
     matrix_formating.R $pheno_file ${geno_file[2]}
-    
     """
     
 }
