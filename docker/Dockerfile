@@ -11,6 +11,18 @@ RUN apt-get update && apt-get install -y \
     r-base \
     wget \
     unzip \
+    libssl-dev \
+    libcurl4-openssl-dev \
+    unixodbc-dev \
+    libxml2-dev \
+    libmariadb-dev \
+    libfontconfig1-dev \
+    libharfbuzz-dev \
+    libfribidi-dev \
+    libfreetype6-dev \
+    libpng-dev \
+    libtiff5-dev \ 
+    libjpeg-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -22,6 +34,10 @@ RUN wget -c http://s3.amazonaws.com/plink1-assets/plink_linux_x86_64_20231211.zi
 
 # Install FastLMM via pip
 RUN pip3 install fastlmm
+RUN chmod +x /usr/local/lib/python3.10/dist-packages/fastlmm/association/Fastlmm_autoselect/fastlmmc
+
+RUN R -e 'install.packages("xml2", dependencies = T, INSTALL_opts = c("--no-lock"))'
+RUN R -e 'install.packages("tidyverse")'
 
 # Add FastLMM directory to the PATH
 ENV PATH="/usr/local/lib/python3.10/dist-packages/fastlmm/association/Fastlmm_autoselect/:${PATH}"
