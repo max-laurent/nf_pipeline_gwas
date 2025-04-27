@@ -3,5 +3,6 @@
 .DS_Store
 .nextflow*
 .RHistory
+work/
 # Dataset
 /data

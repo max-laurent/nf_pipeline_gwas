@@ -131,7 +131,7 @@ workflow {
     Channel
         .fromPath(params.pheno_matrix)
         .set{expr_matrix_ch}
-     Channel
+    Channel
     	.fromPath(params.bfile)
         .toSortedList()
         .flatten()
