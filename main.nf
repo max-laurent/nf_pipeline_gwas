@@ -126,7 +126,7 @@ workflow {
     Channel // Create channel for the phenotyping matrix
         .fromPath(params.pheno_matrix)
         .set{expr_matrix_ch}
-     Channel // Create channel for the bitfiles
+    Channel // Create channel for the bitfiles
     	.fromPath(params.bfile) // Create a channel from the pattern of your file bitfile
         .toSortedList()         // Collect all matching files into a sorted list
         .flatten()              // Flatten the list in case of nested structures
