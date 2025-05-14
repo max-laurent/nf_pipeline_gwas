@@ -1,6 +1,6 @@
 # GWAS Pipeline
 
-This repository contains a Nextflow pipeline and R scripts to perform GWAS (Genome-Wide Association Study) using **FASTLMM** and process the results. The pipeline includes formatting inputs, integrating genotype and phenotype data, and extracting significant markers. This pipelines has been designed to receive maize B73v2 genotype data and converts it to B73v4, it had been adapted to run on other organisms yet.
+This repository contains a Nextflow pipeline and R scripts to perform GWAS (Genome-Wide Association Study) using **FASTLMM** and process the results. The pipeline includes formatting inputs, integrating genotype and phenotype data, and extracting significant markers. This pipelines has been designed to receive maize B73v2 genotype data and converts it to B73v4, it hasn't been adapted to run on other organisms yet.
 
 ---
 
